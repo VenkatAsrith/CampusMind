@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: campusmind-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: campusmind_db
+      POSTGRES_USER: campusmind_user
+      POSTGRES_PASSWORD: campusmind_secure_db_password_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campusmind_user -d campusmind_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: campusmind-backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql+psycopg2://campusmind_user:campusmind_secure_db_password_2026@postgres:5432/campusmind_db
+      - JWT_SECRET_KEY=production_secret_key_campusmind_rag_2026_super_secure_key
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=480
+      - EMBEDDING_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
+      - EMBEDDING_DIMENSION=384
+      - SIMILARITY_THRESHOLD=0.50
+      - TOP_K_CHUNKS=4
+      - USE_MOCK_EMBEDDINGS=false
+      - USE_MOCK_LLM=false
+      - LLM_PROVIDER=openai
+      - LLM_API_KEY=${LLM_API_KEY:-mock-key}
+      - LLM_BASE_URL=https://api.openai.com/v1
+      - LLM_MODEL=gpt-4o-mini
+      - ALLOWED_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:

@@ -1,0 +1,46 @@
+@startuml fig6_7_activity_ingestion
+!include _style.iuml
+skinparam dpi 170
+|Administrator|
+start
+:Select document and audience role;
+:Submit upload\n(POST /api/admin/documents);
+|Backend (Document Ingestion Service)|
+:Verify JWT and role;
+if (Administrator?) then (no)
+  :Return 403 Forbidden;
+  stop
+else (yes)
+endif
+:Validate name, extension\n(PDF / DOCX / TXT), size <= 10 MB;
+if (File valid?) then (no)
+  :Return 400 validation error;
+  stop
+else (yes)
+endif
+:Compute SHA-256 content hash;
+:Create Document (status = PROCESSING);
+:Extract text with page / section metadata;
+if (Text extracted?) then (no)
+  :Roll back; status = FAILED;\nstore error; report failure;
+  stop
+else (yes)
+endif
+:Clean text; split into overlapping chunks;
+:Generate 384-d embeddings (batch);
+if (Embeddings generated?) then (no)
+  :Roll back; status = FAILED;\nstore error; report failure;
+  stop
+else (yes)
+endif
+:Persist chunks, vectors and metadata;
+if (Transaction committed?) then (no)
+  :Roll back; status = FAILED;\nstore error; report failure;
+  stop
+else (yes)
+endif
+:Set status = COMPLETED;\nrecord chunk count;
+|Administrator|
+:Document listed as retrievable;
+stop
+@enduml

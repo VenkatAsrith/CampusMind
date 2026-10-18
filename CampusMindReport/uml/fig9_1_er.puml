@@ -1,0 +1,80 @@
+@startuml fig9_1_er
+!include _style.iuml
+skinparam linetype ortho
+hide circle
+hide methods
+entity "users" as U {
+  * id : INTEGER <<PK>>
+  --
+  * username : VARCHAR(100) <<UQ>>
+  * email : VARCHAR(255) <<UQ>>
+  * full_name : VARCHAR(255)
+  * hashed_password : VARCHAR(255)
+  * role : user_role_enum
+  * is_active : BOOLEAN
+  * created_at, updated_at : TIMESTAMPTZ
+}
+entity "documents" as D {
+  * id : INTEGER <<PK>>
+  --
+  * uploader_id : INTEGER <<FK>>
+  * filename : VARCHAR(255)
+  * title : VARCHAR(255)
+  * document_type : VARCHAR(20)
+  * file_size_bytes : INTEGER
+  * content_hash : VARCHAR(64)
+  * audience_role : role enum
+  * processing_status : status enum
+  error_message : TEXT
+  * chunk_count : INTEGER
+  * created_at, updated_at : TIMESTAMPTZ
+}
+entity "document_chunks" as C {
+  * id : INTEGER <<PK>>
+  --
+  * document_id : INTEGER <<FK>> ON DELETE CASCADE
+  * chunk_index : INTEGER
+  * chunk_text : TEXT
+  page_number : INTEGER
+  section_heading : VARCHAR(255)
+  * audience_role : role enum
+  embedding : VECTOR(384)
+  * created_at : TIMESTAMPTZ
+}
+entity "conversations" as V {
+  * id : VARCHAR(36) <<PK>> (UUID)
+  --
+  * user_id : INTEGER <<FK>> ON DELETE CASCADE
+  * title : VARCHAR(255)
+  * created_at, updated_at : TIMESTAMPTZ
+}
+entity "messages" as M {
+  * id : INTEGER <<PK>>
+  --
+  * conversation_id : VARCHAR(36) <<FK>> ON DELETE CASCADE
+  * role : VARCHAR(20)
+  * content : TEXT
+  citations_json : TEXT (JSON array)
+  * created_at : TIMESTAMPTZ
+}
+entity "query_logs" as Q {
+  * id : INTEGER <<PK>>
+  --
+  * request_id : VARCHAR(36)
+  user_id : INTEGER <<FK>> ON DELETE SET NULL
+  * user_role : VARCHAR(50)
+  * question_length : INTEGER
+  * retrieval_count : INTEGER
+  * retrieval_latency_ms : FLOAT
+  * generation_latency_ms : FLOAT
+  * total_latency_ms : FLOAT
+  * outcome : VARCHAR(50)
+  error_category : VARCHAR(100)
+  * created_at : TIMESTAMPTZ
+}
+U ||--o{ D : uploads
+U ||--o{ V : owns
+V ||--|{ M : contains
+D ||--|{ C : "split into"
+U |o--o{ Q : issues
+@enduml

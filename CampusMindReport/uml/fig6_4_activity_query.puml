@@ -1,0 +1,29 @@
+@startuml fig6_4_activity_query
+!include _style.iuml
+start
+:User enters question;
+:Validate request\n(JWT, 2..1500 characters);
+if (Request valid?) then (no)
+  :Return error\n(401 / 403 / 422);
+  stop
+else (yes)
+endif
+:Generate query embedding;
+:Search pgvector with role filter\nand relevance threshold;
+if (Any authorized chunk >= threshold?) then (no)
+  :Return insufficient-information reply;
+  note right: LLM is not called
+else (yes)
+  :Build context and grounded prompt;
+  :Generate answer with Claude;
+  if (Provider call succeeded?) then (no)
+    :Return provider error;
+    stop
+  else (yes)
+  endif
+  :Attach citations from retrieved chunks;
+endif
+:Persist assistant message and QueryLog;
+:Display response;
+stop
+@enduml

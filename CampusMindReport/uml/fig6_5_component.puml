@@ -1,0 +1,39 @@
+@startuml fig6_5_component
+!include _style.iuml
+skinparam linetype polyline
+skinparam componentStyle uml2
+component "React Frontend\n(TypeScript, Vite)" as FE
+node "CampusMind Backend (FastAPI)" {
+  component "FastAPI REST API\n(routers, validation)" as API
+  component "Authentication and\nAuthorization" as AUTH
+  component "Conversation Service" as CONV
+  component "Document Ingestion\nService" as ING
+  component "Embedding Service\n(all-MiniLM-L6-v2)" as EMB
+  component "Retrieval / RAG Service\n(RAG Orchestrator)" as RAG
+  component "LLM Provider Adapter" as LLM
+}
+database "PostgreSQL + pgvector" as DB
+cloud "Anthropic Claude API\n<<external>>" as CL
+interface "REST / JSON\nover HTTPS" as IREST
+interface IAuth
+interface IEmbed
+interface IGenerate
+FE --( IREST
+IREST -- API
+API --( IAuth
+IAuth -- AUTH
+API --> CONV
+API --> ING
+API --> RAG
+RAG --( IEmbed
+ING --( IEmbed
+IEmbed -- EMB
+RAG --( IGenerate
+IGenerate -- LLM
+RAG --> AUTH : authorized roles
+AUTH --> DB : SQL
+CONV --> DB : SQL
+ING --> DB : SQL (transaction)
+RAG --> DB : SQL + vector search
+LLM --> CL : HTTPS + API key
+@enduml

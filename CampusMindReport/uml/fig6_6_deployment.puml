@@ -1,0 +1,29 @@
+@startuml fig6_6_deployment
+!include _style.iuml
+skinparam linetype polyline
+title Proposed deployment architecture (production hosting not yet verified)
+node "User device" <<device>> {
+  artifact "Web browser" as BR
+}
+node "Frontend hosting\n(Nginx container or static host)" <<execution environment>> {
+  artifact "React production build" as FEB
+}
+node "Backend application service" <<container>> {
+  artifact "campusmind-backend\n(FastAPI + Uvicorn)" as BE
+  artifact "Embedding model files" as EMF
+  artifact "Environment secrets\n(JWT key, DB URL,\nANTHROPIC_API_KEY)" as SEC
+}
+node "Database server\n(private network)" <<node>> {
+  database "PostgreSQL 16\n+ pgvector" as PG
+}
+node "Private document storage\n(planned)" <<node>> as OBJ
+node "Anthropic Claude API" <<external system>> as CL
+node "GitHub Actions CI" <<deployment mechanism>> as CI
+BR --> FEB : HTTPS (static assets)
+BR --> BE : HTTPS / REST (JWT)
+BE --> PG : TCP 5432 (private)
+BE ..> OBJ : file I/O (planned)
+BE --> CL : HTTPS + API key
+CI ..> BE : test, build image
+CI ..> FEB : test, build bundle
+@enduml

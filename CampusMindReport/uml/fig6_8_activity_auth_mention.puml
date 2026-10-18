@@ -1,0 +1,35 @@
+@startuml fig6_8_activity_auth_mention
+!include _style.iuml
+skinparam dpi 190
+start
+:User types "@" and selects a mention;
+if (Workflow?) then (@roll-number)
+  :Backend requires a valid JWT;
+  :Resolve identity and role\nfrom the database;
+  if (Own roll number\nor Administrator?) then (yes)
+    :Return permitted record;
+  else (no)
+    :403 Forbidden;\nlog security event;
+  endif
+else (@principal)
+  :Show institutional sign-in prompt;
+  :POST /api/auth/login\n(Argon2id verification);
+  if (Valid and active?) then (no)
+    :401 / 403;\nno token issued;
+  else (yes)
+    :Issue JWT with\nserver-assigned role;
+    if (Role = Administrator?) then (yes)
+      :Allow restricted retrieval\n(admin audience in SQL filter);
+    else (no)
+      :Deny elevation;\nkeep current session;
+    endif
+  endif
+endif
+:Return to chat with safe response;
+note right
+  A mention or roll number never
+  grants permission by itself; the
+  backend decides after authentication.
+end note
+stop
+@enduml

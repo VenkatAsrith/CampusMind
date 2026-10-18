@@ -19,7 +19,7 @@ services:
 
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: campusmind-backend
     restart: always
@@ -34,21 +34,39 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=480
       - EMBEDDING_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
       - EMBEDDING_DIMENSION=384
-      - SIMILARITY_THRESHOLD=0.50
+      - SIMILARITY_THRESHOLD=0.30
       - TOP_K_CHUNKS=4
       - USE_MOCK_EMBEDDINGS=false
       - USE_MOCK_LLM=false
-      - LLM_PROVIDER=openai
+      - LLM_PROVIDER=anthropic
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-mock-key-for-campusmind}
+      - ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
       - LLM_API_KEY=${LLM_API_KEY:-mock-key}
       - LLM_BASE_URL=https://api.openai.com/v1
       - LLM_MODEL=gpt-4o-mini
-      - ALLOWED_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+      - ALLOWED_CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
     ports:
       - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: campusmind-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
       retries: 3
 
 volumes:

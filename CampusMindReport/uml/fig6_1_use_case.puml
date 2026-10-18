@@ -1,0 +1,45 @@
+@startuml fig6_1_use_case
+!include _style.iuml
+skinparam linetype polyline
+
+actor "Registered User" as RU
+actor Student as ST
+actor Faculty as FA
+actor Administrator as AD
+actor "Anthropic Claude API\n<<external system>>" as CL
+rectangle "CampusMind" {
+  usecase "Authenticate user" as UC1
+  usecase "Ask campus question" as UC2
+  usecase "Retrieve authorized evidence" as UC3
+  usecase "Generate grounded answer" as UC4
+  usecase "View answer and citations" as UC5
+  usecase "View conversation history" as UC6
+  usecase "Manage own conversations" as UC7
+  usecase "Perform authorized\nrestricted-information workflow\n(@ mention)" as UC8
+  usecase "Upload campus document" as UC9
+  usecase "Classify document audience" as UC10
+  usecase "Process and index document" as UC11
+  usecase "View document processing status" as UC12
+  usecase "Delete document" as UC13
+}
+ST --|> RU
+FA --|> RU
+AD --|> RU
+RU --> UC1
+RU --> UC2
+RU --> UC5
+RU --> UC6
+RU --> UC7
+RU --> UC8
+AD --> UC9
+AD --> UC12
+AD --> UC13
+UC2 ..> UC3 : <<include>>
+UC4 ..> UC2 : <<extend>>\n[evidence >= threshold]
+UC8 ..> UC1 : <<include>>
+UC9 ..> UC10 : <<include>>
+UC9 ..> UC11 : <<include>>
+actor "Anthropic Claude API\n<<external system>>" as CL
+UC4 -- CL
+UC3 -[hidden]- CL
+@enduml

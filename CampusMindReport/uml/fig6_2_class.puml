@@ -1,0 +1,120 @@
+@startuml fig6_2_class
+!include _style.iuml
+skinparam classAttributeIconSize 0
+hide circle
+package "Domain entities (persistent)" {
+  enum UserRole {
+    STUDENT
+    FACULTY
+    ADMIN
+  }
+  enum ProcessingStatus {
+    PENDING
+    PROCESSING
+    COMPLETED
+    FAILED
+  }
+  class User {
+    - id : int
+    - username : str
+    - email : str
+    - full_name : str
+    - hashed_password : str
+    - role : UserRole
+    - is_active : bool
+  }
+  class Document {
+    - id : int
+    - title : str
+    - document_type : str
+    - content_hash : str
+    - audience_role : UserRole
+    - processing_status : ProcessingStatus
+    - chunk_count : int
+    - error_message : str
+  }
+  class DocumentChunk {
+    - id : int
+    - chunk_index : int
+    - chunk_text : str
+    - page_number : int
+    - section_heading : str
+    - audience_role : UserRole
+    - embedding : vector(384)
+  }
+  class Conversation {
+    - id : UUID
+    - title : str
+    - created_at : datetime
+    - updated_at : datetime
+  }
+  class Message {
+    - id : int
+    - role : str
+    - content : str
+    - citations_json : str
+  }
+  class Citation <<value object>> {
+    - document_id : int
+    - document_title : str
+    - page_number : int
+    - section_heading : str
+    - chunk_id : int
+    - similarity_score : float
+  }
+  class QueryLog {
+    - request_id : UUID
+    - user_role : str
+    - retrieval_count : int
+    - retrieval_latency_ms : float
+    - generation_latency_ms : float
+    - outcome : str
+  }
+}
+package "Services (stateless)" {
+  class AuthService {
+    + verify_password(p, h) : bool
+    + create_access_token(sub, role) : str
+    + get_current_user(token) : User
+    + get_authorized_roles(role) : List<UserRole>
+  }
+  class DocumentIngestionService {
+    + validate(file) : FileInfo
+    + extract(file) : List<Section>
+    + chunk(sections) : List<Chunk>
+    + ingest(file, audience) : Document
+  }
+  class EmbeddingService {
+    + embed_query(text) : float[384]
+    + embed_batch(texts) : List<float[384]>
+  }
+  class RetrievalService {
+    - top_k : int
+    - threshold : float
+    + search(question, role) : List<RetrievedChunk>
+  }
+  class RAGOrchestrator {
+    + process_chat_query(user, question) : ChatResponse
+  }
+  class LLMProviderAdapter {
+    - provider : str
+    - model : str
+    + generate_answer(prompt) : str
+  }
+}
+User "1" -- "0..*" Conversation : owns >
+User "1" -- "0..*" Document : uploads >
+Conversation "1" *-- "1..*" Message : contains >
+Document "1" *-- "1..*" DocumentChunk : split into >
+Message "1" *-- "0..*" Citation : references >
+Citation "0..*" --> "1" DocumentChunk : cites >
+User "0..1" -- "0..*" QueryLog : issues >
+RAGOrchestrator ..> RetrievalService : <<use>>
+RAGOrchestrator ..> LLMProviderAdapter : <<use>>
+RAGOrchestrator ..> QueryLog : <<create>>
+RAGOrchestrator ..> Message : <<create>>
+RetrievalService ..> EmbeddingService : <<use>>
+RetrievalService ..> AuthService : <<use>>
+DocumentIngestionService ..> EmbeddingService : <<use>>
+DocumentIngestionService ..> DocumentChunk : <<create>>
+@enduml

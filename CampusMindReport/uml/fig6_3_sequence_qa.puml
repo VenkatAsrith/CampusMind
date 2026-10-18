@@ -1,0 +1,55 @@
+@startuml fig6_3_sequence_qa
+!include _style.iuml
+skinparam linetype polyline
+skinparam sequenceMessageAlign left
+skinparam ParticipantPadding 6
+autonumber
+actor User
+participant "React\nFrontend" as FE
+participant "FastAPI\nAPI" as API
+participant "Authentication /\nAuthorization" as AUTH
+participant "RAG\nOrchestrator" as RAG
+participant "Embedding\nService" as EMB
+database "PostgreSQL /\npgvector" as DB
+participant "Conversation /\nMessage Persistence" as PER
+participant "Anthropic\nClaude API" as CL
+User -> FE : submit question
+FE -> API : POST /api/chat/query\n(Bearer JWT)
+activate API
+API -> AUTH : get_current_user(token)
+activate AUTH
+AUTH -> DB : load user, check is_active
+DB --> AUTH : user, role
+AUTH --> API : verified user and role
+deactivate AUTH
+API -> RAG : process_chat_query(user, question)
+activate RAG
+RAG -> PER : resolve conversation, save user message
+RAG -> EMB : embed_query(question)
+EMB --> RAG : q in R^384
+RAG -> DB : cosine search, audience_role IN\nauthorized_roles(role), status = completed,\nsimilarity >= threshold, LIMIT k
+DB --> RAG : authorized chunks (0..k)
+alt no chunk meets the threshold (insufficient evidence)
+  RAG -> PER : save safe "insufficient information" reply\nwrite QueryLog(outcome = insufficient_evidence)
+  note right of RAG : Claude is NOT called
+else sufficient authorized evidence
+  RAG -> RAG : build grounded prompt\n(<context> delimited as data)
+  RAG -> CL : messages.create(model, system,\nmessages, max_tokens)
+  activate CL
+  alt provider available
+    CL --> RAG : grounded answer text
+    deactivate CL
+    RAG -> RAG : build citations from\nretrieved chunks only
+    RAG -> PER : save assistant message + citations\nwrite QueryLog(outcome = answered)
+  else provider timeout / error (after retries)
+    CL --> RAG : error
+    RAG --> API : LLMServiceError
+    API --> FE : HTTP 500 error response
+  end
+end
+RAG --> API : ChatQueryResponse
+deactivate RAG
+API --> FE : HTTP 200 {answer, citations,\ninsufficient_evidence}
+deactivate API
+FE --> User : render answer and citation cards
+@enduml

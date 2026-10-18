@@ -162,4 +162,5 @@ cp .env.example .env
 
 docker compose up --build -d
 ```
-Access the application at `http://localhost:3000`.
+Access the application at :: Link will be updated soon !!
+.
